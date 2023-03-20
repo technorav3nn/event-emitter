@@ -17,7 +17,7 @@ export class SignalManager {
 	 * @readonly
 	 * @type {Map<Function, RBXScriptConnection>}
 	 */
-	private readonly listeners: Map<Callback, RBXScriptConnection>;
+	public readonly listeners: Map<Callback, RBXScriptConnection>;
 
 	/**
 	 * Creates a new SignalManager.
@@ -79,14 +79,21 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @readonly
 	 * @type {Map<keyof L, SignalManager>}
 	 */
-	private readonly listeners: Map<keyof Events, SignalManager>;
+	private readonly events: Map<keyof Events, SignalManager>;
+
+	/**
+	 * The default maximum number of listeners.
+	 * @public
+	 * @static
+	 */
+	public static defaultMaxListeners = 25;
 
 	/**
 	 * Creates a new EventEmitter.
 	 * @constructor
 	 */
 	public constructor() {
-		this.listeners = new Map();
+		this.events = new Map();
 	}
 
 	/**
@@ -96,10 +103,33 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @returns {RBXScriptConnection} The connection.
 	 */
 	public on<EventName extends keyof Events>(event: EventName, listener: Events[EventName]): RBXScriptConnection {
-		if (!this.listeners.has(event)) {
-			this.listeners.set(event, new SignalManager());
+		if (!this.events.has(event)) {
+			this.events.set(event, new SignalManager());
 		}
-		return this.listeners.get(event)!.connect(listener as Callback);
+		return this.events.get(event)!.connect(listener as Callback);
+	}
+
+	/**
+	 * Adds a listener to the specified event.
+	 * @param {keyof L} event The event.
+	 * @param {L[E]} listener The listener.
+	 * @returns {RBXScriptConnection} The connection.
+	 */
+	public addListener = this.on;
+
+	/**
+	 * Listen to an event, but once its fired it will be destroyed
+	 * @param {keyof L} event The event.
+	 * @param {L[E]} listener The listener.
+	 */
+	public once<EventName extends keyof Events>(event: EventName, listener: Events[EventName]): RBXScriptConnection {
+		if (!this.events.has(event)) {
+			this.events.set(event, new SignalManager());
+		}
+		return this.events.get(event)!.connect((...args: unknown[]) => {
+			listener(...(args as unknown[]));
+			this.off(event, listener);
+		});
 	}
 
 	/**
@@ -109,10 +139,18 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @returns {void}
 	 */
 	public off<EventName extends keyof Events>(eventName: EventName, listener: Events[EventName]) {
-		if (this.listeners.has(eventName)) {
-			this.listeners.get(eventName)!.disconnect(listener as Callback);
+		if (this.events.has(eventName)) {
+			this.events.get(eventName)!.disconnect(listener as Callback);
 		}
 	}
+
+	/**
+	 * Removes a listener from the specified event.
+	 * @param {keyof L} event The event.
+	 * @param {L[E]} listener The listener.
+	 * @returns {void}
+	 */
+	public removeListener = this.off;
 
 	/**
 	 * Emits an event.
@@ -121,8 +159,57 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @returns {void}
 	 */
 	public emit<EventName extends keyof Events>(event: EventName, ...args: Parameters<Events[EventName]>): void {
-		if (this.listeners.has(event)) {
-			this.listeners.get(event)!.signal.Fire(...(args as unknown[]));
+		if (this.events.has(event)) {
+			this.events.get(event)!.signal.Fire(...(args as unknown[]));
 		}
+	}
+
+	/**
+	 * Gets all the event names.
+	 * @returns {Array<keyof L>} The event names.
+	 * @public
+	 */
+	public eventNames(): Array<keyof Events> {
+		const keys = (() => {
+			const output: Array<keyof Events> = [];
+			this.events.forEach((_, key) => {
+				output.push(key);
+			});
+			return output;
+		})();
+
+		return keys;
+	}
+
+	/**
+	 * Gets the number of listeners for the specified event.
+	 * @param {keyof L} event The event.
+	 * @returns {number} The number of listeners.
+	 * @public
+	 */
+	public listenerCount<EventName extends keyof Events>(event: EventName): number {
+		return this.eventNames()
+			.filter((eventName) => eventName === event)
+			.size();
+	}
+
+	/**
+	 * Returns an array of functions that are listening to the specified event.
+	 * @param {keyof L} event The event.
+	 * @returns {Array<L[E]>} The listeners.
+	 * @public
+	 */
+	public listeners<EventName extends keyof Events>(event: EventName): Events[EventName][] {
+		if (this.events.has(event)) {
+			const { listeners: signalListeners } = this.events.get(event)!;
+			const output: Array<Events[EventName]> = [];
+
+			signalListeners.forEach((_: unknown, listener: Callback) => {
+				output.push(listener as Events[EventName]);
+			});
+
+			return output;
+		}
+		return [];
 	}
 }
