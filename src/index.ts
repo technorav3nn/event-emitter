@@ -115,7 +115,7 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @param {L[E]} listener The listener.
 	 * @returns {RBXScriptConnection} The connection.
 	 */
-	public addListener = this.on;
+	public addListener = (...args: Parameters<typeof this.on>) => this.on(...args);
 
 	/**
 	 * Listen to an event, but once its fired it will be destroyed
@@ -126,6 +126,7 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 		if (!this.events.has(event)) {
 			this.events.set(event, new SignalManager());
 		}
+
 		return this.events.get(event)!.connect((...args: unknown[]) => {
 			listener(...(args as unknown[]));
 			this.off(event, listener);
@@ -150,7 +151,7 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @param {L[E]} listener The listener.
 	 * @returns {void}
 	 */
-	public removeListener = this.off;
+	public removeListener = (...args: Parameters<typeof this.off>) => this.off(...args);
 
 	/**
 	 * Emits an event.
