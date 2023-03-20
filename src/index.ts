@@ -171,13 +171,10 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @public
 	 */
 	public eventNames(): Array<keyof Events> {
-		const keys = (() => {
-			const output: Array<keyof Events> = [];
-			this.events.forEach((_, key) => {
-				output.push(key);
-			});
-			return output;
-		})();
+		const keys: Array<keyof Events> = [];
+		this.events.forEach((_, key) => {
+			keys.push(key);
+		});
 
 		return keys;
 	}
