@@ -74,11 +74,6 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@rbxts/beacon@^2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@rbxts/beacon/-/beacon-2.0.0.tgz#b3870f67b4365feb188f5336f4c5ad5e676b382e"
-  integrity sha512-FqkylUxFAbZwQkctCrXNw/4FHwH2qusxh3viYcfe1Qr3Uh/87hEvpMv84rNxC/x0ip4bg3+7ZpgQ4GCbwdIGGg==
-
 "@rbxts/compiler-types@^2.1.0-types.1":
   version "2.1.0-types.1"
   resolved "https://registry.yarnpkg.com/@rbxts/compiler-types/-/compiler-types-2.1.0-types.1.tgz#60eb32109fc2299826fd5d1e8f4e7cfc08d9a5ae"

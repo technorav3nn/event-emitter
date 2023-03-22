@@ -19,12 +19,6 @@ export class SignalManager {
 	 */
 	public readonly listeners: Map<Callback, RBXScriptConnection>;
 
-	/**
-	 * Creates a new SignalManager.
-	 * @constructor
-	 * @param {Signal} signal The signal.
-	 * @param {Map<Function, RBXScriptConnection>} listeners The listeners.
-	 */
 	public constructor() {
 		this.signal = new Signal();
 		this.listeners = new Map();
@@ -100,20 +94,25 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * Adds a listener to the specified event.
 	 * @param {keyof L} event The event.
 	 * @param {L[E]} listener The listener.
-	 * @returns {RBXScriptConnection} The connection.
+	 * @returns {void} (soon will return a connection)
 	 */
-	public on<EventName extends keyof Events>(event: EventName, listener: Events[EventName]): RBXScriptConnection {
+	public on<EventName extends keyof Events>(event: EventName, listener: Events[EventName]) {
+		if (this.events.get(event)?.listeners.size() ?? 0 >= EventEmitter.defaultMaxListeners) {
+			warn(`Max listeners reached (${EventEmitter.defaultMaxListeners})\nMemory leak is possible`);
+			return;
+		}
+
 		if (!this.events.has(event)) {
 			this.events.set(event, new SignalManager());
 		}
-		return this.events.get(event)!.connect(listener as Callback);
+		this.events.get(event)!.connect(listener as Callback);
 	}
 
 	/**
 	 * Adds a listener to the specified event.
 	 * @param {keyof L} event The event.
 	 * @param {L[E]} listener The listener.
-	 * @returns {RBXScriptConnection} The connection.
+	 * @returns {void}
 	 */
 	public addListener = (...args: Parameters<typeof this.on>) => this.on(...args);
 
@@ -122,12 +121,12 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @param {keyof L} event The event.
 	 * @param {L[E]} listener The listener.
 	 */
-	public once<EventName extends keyof Events>(event: EventName, listener: Events[EventName]): RBXScriptConnection {
+	public once<EventName extends keyof Events>(event: EventName, listener: Events[EventName]) {
 		if (!this.events.has(event)) {
 			this.events.set(event, new SignalManager());
 		}
 
-		return this.events.get(event)!.connect((...args: unknown[]) => {
+		this.events.get(event)!.connect((...args: unknown[]) => {
 			listener(...(args as unknown[]));
 			this.off(event, listener);
 		});
@@ -152,6 +151,20 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @returns {void}
 	 */
 	public removeListener = (...args: Parameters<typeof this.off>) => this.off(...args);
+
+	/**
+	 * Removes all listeners from the specified event.
+	 * @param {keyof L} event The event.
+	 * @returns {void}
+	 */
+	public removeAllListeners<EventName extends keyof Events>(eventName: EventName) {
+		if (this.events.has(eventName)) {
+			this.events.get(eventName)!.listeners.forEach((connection) => {
+				connection.Disconnect();
+			});
+			this.events.get(eventName)!.listeners.clear();
+		}
+	}
 
 	/**
 	 * Emits an event.
@@ -186,9 +199,7 @@ export class EventEmitter<Events extends ListenerSignature<Events> = DefaultList
 	 * @public
 	 */
 	public listenerCount<EventName extends keyof Events>(event: EventName): number {
-		return this.eventNames()
-			.filter((eventName) => eventName === event)
-			.size();
+		return this.listeners(event).size();
 	}
 
 	/**
